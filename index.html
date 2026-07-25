@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高校物理 公式マップ</title>
+<style>
+  :root{
+    --bg:#0A1B33;
+    --bg2:#0E2543;
+    --card:#0F2A4C;
+    --line:rgba(140,190,255,0.22);
+    --line-soft:rgba(140,190,255,0.10);
+    --cyan:#63E6D4;
+    --amber:#FFB454;
+    --text:#E7ECF3;
+    --text-dim:#8FA3BC;
+    --mono: ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+    --sans: -apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic","Hiragino Sans",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      repeating-linear-gradient(0deg, var(--line-soft) 0px, var(--line-soft) 1px, transparent 1px, transparent 28px),
+      repeating-linear-gradient(90deg, var(--line-soft) 0px, var(--line-soft) 1px, transparent 1px, transparent 28px),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+  }
+  a{color:inherit;text-decoration:none;}
+
+  header{
+    padding:22px 20px 16px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(15,42,76,0.6), transparent);
+    position:sticky; top:0; z-index:5;
+    backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .brand .mark{
+    font-family:var(--mono); font-size:13px; letter-spacing:2px; color:var(--cyan);
+    border:1px solid var(--cyan); padding:3px 8px; border-radius:2px;
+  }
+  h1{font-size:20px;margin:6px 0 2px;font-weight:700;letter-spacing:0.5px;}
+  header p{margin:0;color:var(--text-dim);font-size:12.5px;}
+  nav.crumbs{margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--text-dim);}
+  nav.crumbs a{color:var(--cyan);}
+  nav.crumbs .sep{margin:0 6px;color:var(--text-dim);}
+
+  .search-box{margin-top:12px;}
+  .search-box input{
+    width:100%; max-width:360px; background:var(--bg2); border:1px solid var(--line);
+    color:var(--text); font-family:var(--sans); font-size:13px; padding:8px 10px; border-radius:2px;
+  }
+  .search-box input::placeholder{color:var(--text-dim);}
+  .search-box input:focus{outline:none;border-color:var(--cyan);}
+
+  .quiz-nav-btn{
+    display:inline-block; margin-top:12px; font-family:var(--mono); font-size:12px;
+    color:var(--bg); background:var(--cyan); padding:6px 12px; border-radius:2px; font-weight:700;
+    letter-spacing:0.5px;
+  }
+  .quiz-nav-btn:hover{background:var(--amber);}
+
+  .quiz-score{
+    font-family:var(--mono); font-size:12px; color:var(--text-dim);
+    margin-bottom:16px; display:flex; align-items:center; gap:10px;
+  }
+  .quiz-score .num{color:var(--cyan); font-weight:700;}
+  .quiz-prompt{font-size:13.5px;color:var(--text-dim);margin-bottom:14px;}
+  .quiz-target{
+    display:flex; align-items:center; gap:16px; margin-bottom:16px;
+    background:var(--card); border:1px solid var(--line); border-radius:3px; padding:16px;
+  }
+  .quiz-target-sym{font-family:var(--mono);font-size:42px;color:var(--cyan);line-height:1;}
+  .quiz-target-name{font-size:16px;font-weight:700;}
+  .quiz-target-unit{display:block;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--amber);margin-top:4px;}
+  .quiz-formula-card{
+    background:var(--bg2); border:1px solid var(--line); border-radius:3px;
+    padding:22px 16px; margin-bottom:8px; text-align:center;
+  }
+  .quiz-hidden{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 0;}
+  .quiz-hidden-icon{font-family:var(--mono);font-size:34px;color:var(--text-dim);opacity:0.5;}
+  .quiz-hidden-label{font-size:12.5px;color:var(--text-dim);}
+  .quiz-formula{
+    font-family:var(--mono); font-size:22px; letter-spacing:0.5px;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px;
+  }
+  .quiz-note{margin-top:10px;font-size:12.5px;color:var(--text-dim);}
+  .quiz-actions{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .quiz-next{
+    font-family:var(--mono); font-size:13px; background:var(--cyan); color:var(--bg);
+    border:none; border-radius:2px; padding:10px 18px; font-weight:700; cursor:pointer;
+  }
+  .quiz-next:hover{background:var(--amber);}
+  .quiz-grade{
+    font-family:var(--mono); font-size:13px; border-radius:2px; padding:10px 16px;
+    font-weight:700; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--text);
+  }
+  .quiz-grade:disabled{cursor:default;opacity:0.6;}
+  .quiz-grade-ok{border-color:#63E6A0;color:#63E6A0;}
+  .quiz-grade-ok.picked{background:rgba(99,230,160,0.12);}
+  .quiz-grade-ng{border-color:#FF6B6B;color:#FF6B6B;}
+  .quiz-grade-ng.picked{background:rgba(255,107,107,0.12);}
+  .quiz-source-link{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);width:100%;}
+  .quiz-source-link a{color:var(--cyan);}
+
+  .quiz-input{
+    font-family:var(--mono); font-size:20px; text-align:center;
+    width:3.4em; background:var(--bg); color:var(--cyan);
+    border:1px solid var(--amber); border-radius:2px; padding:2px 4px;
+  }
+  .quiz-input:focus{outline:none;border-color:var(--cyan);}
+  .quiz-input.q-correct{border-color:#63E6A0;color:#63E6A0;background:rgba(99,230,160,0.08);}
+  .quiz-input.q-wrong{border-color:#FF6B6B;color:#FF6B6B;background:rgba(255,107,107,0.08);}
+  .quiz-input:disabled{opacity:1;}
+  .quiz-reveal{font-family:var(--mono);font-size:12px;color:#63E6A0;margin-left:2px;}
+  .quiz-result-line{font-family:var(--mono);font-size:13px;color:var(--text-dim);margin:10px 2px 0;}
+  .quiz-result-line .num{color:var(--amber);font-weight:700;}
+  .quiz-submit{
+    font-family:var(--mono); font-size:13px; background:var(--cyan); color:var(--bg);
+    border:none; border-radius:2px; padding:10px 18px; font-weight:700; cursor:pointer;
+  }
+  .quiz-submit:hover{background:var(--amber);}
+  .quiz-hint{font-size:11.5px;color:var(--text-dim);margin-top:8px;}
+
+  @media (max-width:480px){
+    .quiz-formula{font-size:18px;}
+    .quiz-target-sym{font-size:34px;}
+  }
+
+  main{max-width:960px;margin:0 auto;padding:20px 16px 80px;}
+
+  .cat-block{margin-bottom:26px;}
+  .cat-title{
+    font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text-dim);
+    margin:0 2px 10px; text-transform:uppercase; display:flex; align-items:center; gap:8px;
+  }
+  .cat-title::after{content:"";flex:1;height:1px;background:var(--line);}
+  .cat-count{color:var(--amber);}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(118px,1fr));gap:10px;}
+  .tile{
+    position:relative; background:var(--card); border:1px solid var(--line); border-radius:3px;
+    padding:14px 10px 10px; text-align:center; transition:border-color .15s, transform .15s;
+  }
+  .tile:hover{border-color:var(--cyan);transform:translateY(-2px);}
+  .tile .sym{font-family:var(--mono);font-size:25px;color:var(--cyan);display:block;}
+  .tile .nm{font-size:10.5px;color:var(--text-dim);margin-top:6px;display:block;line-height:1.4;}
+  .tile .unit{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:9px;color:var(--amber);}
+  .tile::before, .tile::after{content:"";position:absolute;width:6px;height:6px;border:1px solid var(--line-soft);}
+  .tile::before{top:3px;left:3px;border-right:none;border-bottom:none;}
+  .tile::after{bottom:3px;right:3px;border-left:none;border-top:none;}
+  .tile.hidden{display:none;}
+
+  .sheet{background:var(--card); border:1px solid var(--line); border-radius:3px; padding:26px 24px; position:relative;}
+  .sheet::before, .sheet::after{content:"";position:absolute;width:14px;height:14px;border:1px solid var(--cyan);opacity:0.6;}
+  .sheet::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+  .sheet::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+
+  .sym-head{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:6px;}
+  .sym-big{font-family:var(--mono);font-size:56px;color:var(--cyan);line-height:1;}
+  .sym-meta h2{margin:0 0 4px;font-size:19px;}
+  .sym-meta .cat-pill{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);letter-spacing:1px;}
+  .sym-meta .unit-tag{
+    font-family:var(--mono);font-size:12px;color:var(--amber);
+    border:1px solid rgba(255,180,84,0.4); border-radius:2px; padding:2px 7px; margin-top:6px; display:inline-block;
+  }
+  .meaning{margin:16px 0 4px;color:var(--text);font-size:14.5px;line-height:1.8;}
+  .caution{margin-top:8px;font-size:12.5px;color:var(--amber);opacity:0.9;}
+
+  .section-label{
+    font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text-dim);
+    text-transform:uppercase; margin:26px 0 10px; padding-top:16px; border-top:1px dashed var(--line);
+  }
+
+  .formula-card{background:var(--bg2); border:1px solid var(--line); border-radius:3px; padding:16px 16px 12px; margin-bottom:12px;}
+  .formula-expr{font-family:var(--mono); font-size:20px; letter-spacing:0.5px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  .formula-note{margin-top:8px;font-size:12.5px;color:var(--text-dim);}
+
+  .chip{font-family:var(--mono); color:var(--bg); background:var(--cyan); border-radius:2px; padding:1px 7px; font-weight:700;}
+  .chip:hover{background:var(--amber);}
+  .chip.self{background:transparent; color:var(--amber); border:1px solid var(--amber);}
+  .op{color:var(--text-dim);padding:0 2px;}
+
+  .used-in{display:flex;flex-wrap:wrap;gap:8px;}
+  .used-in a{font-family:var(--mono);font-size:14px; border:1px solid var(--line); border-radius:2px; padding:4px 10px; color:var(--text);}
+  .used-in a:hover{border-color:var(--cyan);color:var(--cyan);}
+  .empty-note{color:var(--text-dim);font-size:13px;}
+
+  .back-index{display:inline-block;margin-top:28px;font-family:var(--mono);font-size:12px; color:var(--text-dim); border-top:1px solid var(--line); padding-top:14px; width:100%;}
+  .back-index a{color:var(--cyan);}
+
+  @media (max-width:480px){
+    .sym-big{font-size:44px;}
+    .formula-expr{font-size:17px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">PHYS-01</span>
+    <h1>高校物理 公式マップ</h1>
+  </div>
+  <p>力学・熱・波動・電気・原子。記号をクリックすると意味と公式のページへ移動します（共通テスト頻出項目中心）。</p>
+  <nav class="crumbs" id="crumbs"></nav>
+  <a href="#quiz" class="quiz-nav-btn">🎲 記号穴埋めクイズ</a>
+  <div class="search-box" id="searchBox" style="display:none;">
+    <input type="text" id="searchInput" placeholder="記号名・読みで検索 (例: 加速度, とるく)">
+  </div>
+</header>
+
+<main id="main"></main>
+
+<script>
+const CATS = [
+  {id:"kinematics", label:"運動学"},
+  {id:"dynamics",   label:"動力学・力"},
+  {id:"energy",     label:"仕事・エネルギー"},
+  {id:"momentum",   label:"運動量・衝突"},
+  {id:"rotation",   label:"円運動・回転運動"},
+  {id:"gravity",    label:"万有引力・振動"},
+  {id:"thermo",     label:"熱と気体"},
+  {id:"wave",       label:"波動・光"},
+  {id:"electric",   label:"電気・磁気"},
+  {id:"atomic",     label:"原子"}
+];
+
+const DATA = {
+  /* ---------- 運動学 ---------- */
+  x:{cat:"kinematics",disp:"x",name:"変位",unit:"m",
+    meaning:"物体の位置が基準からどれだけ、どの向きに変化したか。",
+    formulas:[
+      {html:'<a href="#x" class="chip self">x</a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">×</span><a href="#t" class="chip">t</a>', note:"等速運動の場合"},
+      {html:'<a href="#x" class="chip self">x</a><span class="op">=</span><a href="#v0" class="chip">v₀</a><span class="op">×</span><a href="#t" class="chip">t</a><span class="op"> + ½ ×</span><a href="#a" class="chip">a</a><span class="op">×</span><a href="#t" class="chip">t</a><span class="op">²</span>', note:"等加速度運動（初速度あり）"}
+    ]},
+  v:{cat:"kinematics",disp:"v",name:"速度",unit:"m/s",
+    meaning:"単位時間あたりの変位。向きを持つベクトル量。",
+    formulas:[
+      {html:'<a href="#v" class="chip self">v</a><span class="op">= Δ</span><a href="#x" class="chip">x</a><span class="op">÷ Δ</span><a href="#t" class="chip">t</a>', note:"変位の変化率としての定義"},
+      {html:'<a href="#v" class="chip self">v</a><span class="op">=</span><a href="#p" class="chip">p</a><span class="op">÷</span><a href="#m" class="chip">m</a>', note:"運動量の定義より"},
+      {html:'<a href="#v" class="chip self">v</a><span class="op">=</span><a href="#v0" class="chip">v₀</a><span class="op">+</span><a href="#a" class="chip">a</a><span class="op">×</span><a href="#t" class="chip">t</a>', note:"等加速度運動の速度"},
+      {html:'<a href="#v" class="chip self">v</a><span class="op">² =</span><a href="#v0" class="chip">v₀</a><span class="op">² + 2×</span><a href="#a" class="chip">a</a><span class="op">×</span><a href="#x" class="chip">x</a>', note:"時間を含まない関係式"},
+      {html:'<a href="#v" class="chip self">v</a><span class="op">=</span><a href="#freq" class="chip">f</a><span class="op">×</span><a href="#lambda" class="chip">λ</a>', note:"波の基本式（速さ＝振動数×波長）"}
+    ]},
+  v0:{cat:"kinematics",disp:"v₀",name:"初速度",unit:"m/s",
+    meaning:"運動を始めた瞬間（t=0）の速度。",
+    formulas:[
+      {html:'<a href="#v0" class="chip self">v₀</a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">−</span><a href="#a" class="chip">a</a><span class="op">×</span><a href="#t" class="chip">t</a>', note:"v = v₀ + at を変形"}
+    ]},
+  a:{cat:"kinematics",disp:"a",name:"加速度",unit:"m/s²",
+    meaning:"単位時間あたりの速度の変化率。",
+    formulas:[
+      {html:'<a href="#a" class="chip self">a</a><span class="op">= Δ</span><a href="#v" class="chip">v</a><span class="op">÷ Δ</span><a href="#t" class="chip">t</a>', note:"速度の変化率としての定義"},
+      {html:'<a href="#a" class="chip self">a</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷</span><a href="#m" class="chip">m</a>', note:"運動方程式より"}
+    ]},
+  t:{cat:"kinematics",disp:"t",name:"時間",unit:"s",
+    meaning:"運動や変化を計る基本量。",
+    formulas:[
+      {html:'<a href="#t" class="chip self">t</a><span class="op">=</span><a href="#x" class="chip">x</a><span class="op">÷</span><a href="#v" class="chip">v</a>', note:"等速運動の場合"}
+    ]},
+
+  /* ---------- 動力学・力 ---------- */
+  F:{cat:"dynamics",disp:"F",name:"力",unit:"N",
+    meaning:"物体の運動状態（速度）を変化させる働き。大きさと向きを持つベクトル量。",
+    formulas:[
+      {html:'<a href="#F" class="chip self">F</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#a" class="chip">a</a>', note:"運動方程式（ニュートンの第二法則）"},
+      {html:'<a href="#F" class="chip self">F</a><span class="op">= −</span><a href="#k" class="chip">k</a><span class="op">×</span><a href="#x" class="chip">x</a>', note:"フックの法則（ばねの復元力）"},
+      {html:'<a href="#F" class="chip self">F</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">² ÷</span><a href="#r" class="chip">r</a>', note:"円運動に必要な向心力"},
+      {html:'<a href="#F" class="chip self">F</a><span class="op">=</span><a href="#G" class="chip">G</a><span class="op">×</span><a href="#M" class="chip">M</a><span class="op">×</span><a href="#m" class="chip">m</a><span class="op">÷</span><a href="#r" class="chip">r</a><span class="op">²</span>', note:"万有引力の法則"},
+      {html:'<a href="#F" class="chip self">F</a><span class="op">=</span><a href="#q" class="chip">q</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">×</span><a href="#B" class="chip">B</a>', note:"荷電粒子が磁場から受けるローレンツ力"},
+      {html:'<a href="#F" class="chip self">F</a><span class="op">=</span><a href="#B" class="chip">B</a><span class="op">×</span><a href="#Iamp" class="chip">I</a><span class="op">×</span><a href="#Lwire" class="chip">L</a>', note:"電流が磁場から受ける力"},
+      {html:'<span class="op">F = k × q₁ × q₂ ÷</span><a href="#r" class="chip">r</a><span class="op">²（クーロンの法則）</span>', note:"2つの点電荷の間に働く静電気力"}
+    ]},
+  m:{cat:"dynamics",disp:"m",name:"質量",unit:"kg",
+    meaning:"物体が持つ、運動の変化のしにくさ（慣性の大きさ）を表す基本量。",
+    formulas:[
+      {html:'<a href="#m" class="chip self">m</a><span class="op">=</span><a href="#p" class="chip">p</a><span class="op">÷</span><a href="#v" class="chip">v</a>', note:"運動量の定義から変形"}
+    ]},
+  g:{cat:"dynamics",disp:"g",name:"重力加速度",unit:"m/s²（≈9.8）",
+    meaning:"地球上で物体に働く重力による加速度。地表付近ではほぼ一定の定数だが、他の公式を変形すれば実験的に求めることもできる。",
+    formulas:[
+      {html:'<a href="#g" class="chip self">g</a><span class="op">=</span><a href="#Ep" class="chip">E<sub>p</sub></a><span class="op">÷(</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#h" class="chip">h</a><span class="op">)</span>', note:"位置エネルギーの式を変形"},
+      {html:'<a href="#g" class="chip self">g</a><span class="op">= 4π² ×</span><a href="#l" class="chip">l</a><span class="op">÷</span><a href="#T" class="chip">T</a><span class="op">²</span>', note:"単振り子の周期の式を変形"}
+    ]},
+  N:{cat:"dynamics",disp:"N",name:"垂直抗力",unit:"N",
+    meaning:"接触している面が物体を、面に垂直な向きに押し返す力。",
+    formulas:[
+      {html:'<a href="#N" class="chip self">N</a><span class="op">=</span><a href="#f" class="chip">f</a><span class="op">÷</span><a href="#mu" class="chip">μ</a>', note:"摩擦力の式を変形"}
+    ]},
+  f:{cat:"dynamics",disp:"f",name:"摩擦力",unit:"N",
+    meaning:"物体の運動（またはその傾向）を妨げる、接触面に沿って働く力。",
+    formulas:[
+      {html:'<a href="#f" class="chip self">f</a><span class="op">=</span><a href="#mu" class="chip">μ</a><span class="op">×</span><a href="#N" class="chip">N</a>', note:"動摩擦力／最大静止摩擦力の大きさ"}
+    ]},
+  mu:{cat:"dynamics",disp:"μ",name:"摩擦係数",unit:"無次元",
+    meaning:"摩擦力の大きさを決める、接触する2つの面の性質による定数。実験的には摩擦力と垂直抗力の比から求める。",
+    formulas:[
+      {html:'<a href="#mu" class="chip self">μ</a><span class="op">=</span><a href="#f" class="chip">f</a><span class="op">÷</span><a href="#N" class="chip">N</a>', note:"摩擦力の式を変形"}
+    ]},
+  k:{cat:"dynamics",disp:"k",name:"ばね定数",unit:"N/m",
+    meaning:"ばねの硬さを表す定数。値が大きいほど硬いばねだが、他の公式を変形して求めることもできる。",
+    formulas:[
+      {html:'<a href="#k" class="chip self">k</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷</span><a href="#x" class="chip">x</a>', note:"フックの法則（大きさ）を変形"},
+      {html:'<a href="#k" class="chip self">k</a><span class="op">= 4π² ×</span><a href="#m" class="chip">m</a><span class="op">÷</span><a href="#T" class="chip">T</a><span class="op">²</span>', note:"ばね振り子の周期の式を変形"}
+    ]},
+  Tt:{cat:"dynamics",disp:"T",name:"張力",unit:"N",
+    meaning:"糸やひもが物体を引く力。ひもに沿って両側に働く。大きさは1つの式では決まらず、状況ごとに運動方程式へ代入して求める。周期の T とは別の量なので文脈で区別する。",
+    formulas:[
+      {html:'<a href="#Tt" class="chip self">T</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×(</span><a href="#g" class="chip">g</a><span class="op">+</span><a href="#a" class="chip">a</a><span class="op">)</span>', note:"ひもで吊るした物体を加速度aで引き上げるとき"},
+      {html:'<a href="#Tt" class="chip self">T</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">² ÷</span><a href="#r" class="chip">r</a>', note:"水平面内でひもにつないで等速円運動させるとき"}
+    ]},
+  R:{cat:"dynamics",disp:"R",name:"抗力（合力）",unit:"N",
+    meaning:"垂直抗力と摩擦力を合成した、接触面から受ける力の合力。",
+    formulas:[
+      {html:'<a href="#R" class="chip self">R</a><span class="op">= √(</span><a href="#N" class="chip">N</a><span class="op">² +</span><a href="#f" class="chip">f</a><span class="op">²)</span>', note:"垂直抗力と摩擦力の合成"}
+    ]},
+  Fb:{cat:"dynamics",disp:"F<sub>b</sub>",name:"浮力",unit:"N",
+    meaning:"流体（水や空気）の中にある物体が、上向きに押し上げられる力。アルキメデスの原理による。",
+    formulas:[
+      {html:'<a href="#Fb" class="chip self">F<sub>b</sub></a><span class="op">=</span><a href="#rho" class="chip">ρ</a><span class="op">×</span><a href="#V" class="chip">V</a><span class="op">×</span><a href="#g" class="chip">g</a>', note:"押しのけた流体の重さに等しい（アルキメデスの原理）"}
+    ]},
+  rho:{cat:"dynamics",disp:"ρ",name:"密度",unit:"kg/m³",
+    meaning:"物質の単位体積あたりの質量。",
+    formulas:[
+      {html:'<a href="#rho" class="chip self">ρ</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">÷</span><a href="#V" class="chip">V</a>', note:"密度の定義"}
+    ]},
+  V:{cat:"dynamics",disp:"V",name:"体積",unit:"m³",
+    meaning:"物体や流体が占める空間の大きさ。浮力・密度の計算に使う。",
+    formulas:[
+      {html:'<a href="#V" class="chip self">V</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">÷</span><a href="#rho" class="chip">ρ</a>', note:"密度の式を変形"},
+      {html:'<a href="#V" class="chip self">V</a><span class="op">=</span><a href="#Fb" class="chip">F<sub>b</sub></a><span class="op">÷(</span><a href="#rho" class="chip">ρ</a><span class="op">×</span><a href="#g" class="chip">g</a><span class="op">)</span>', note:"浮力の式を変形"}
+    ]},
+
+  /* ---------- 仕事・エネルギー ---------- */
+  W:{cat:"energy",disp:"W",name:"仕事",unit:"J",
+    meaning:"力が物体を動かすときに、力から物体へ移動するエネルギーの量。",
+    formulas:[
+      {html:'<a href="#W" class="chip self">W</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">×</span><a href="#x" class="chip">x</a>', note:"力の向きに動いた距離との積"},
+      {html:'<a href="#W" class="chip self">W</a><span class="op">= Δ</span><a href="#Ek" class="chip">E<sub>k</sub></a>', note:"仕事と運動エネルギーの関係（仕事－エネルギー定理）"}
+    ]},
+  P:{cat:"energy",disp:"P",name:"仕事率（パワー）",unit:"W",
+    meaning:"単位時間あたりにする仕事の量。エネルギーを移す速さ。",
+    formulas:[
+      {html:'<a href="#P" class="chip self">P</a><span class="op">=</span><a href="#W" class="chip">W</a><span class="op">÷</span><a href="#t" class="chip">t</a>', note:"仕事率の定義"},
+      {html:'<a href="#P" class="chip self">P</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">×</span><a href="#v" class="chip">v</a>', note:"等速で力を加え続けるとき"}
+    ]},
+  Ek:{cat:"energy",disp:"E<sub>k</sub>",name:"運動エネルギー",unit:"J",
+    meaning:"物体が運動していることによって持っているエネルギー。",
+    formulas:[
+      {html:'<a href="#Ek" class="chip self">E<sub>k</sub></a><span class="op">= ½ ×</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">²</span>', note:"並進運動の運動エネルギー"},
+      {html:'<a href="#Ek" class="chip self">E<sub>k</sub></a><span class="op">= ½ ×</span><a href="#I" class="chip">I</a><span class="op">×</span><a href="#omega" class="chip">ω</a><span class="op">²</span>', note:"回転運動の運動エネルギー"}
+    ]},
+  Ep:{cat:"energy",disp:"E<sub>p</sub>",name:"位置エネルギー（重力）",unit:"J",
+    meaning:"物体が基準より高い位置にあることで持っているエネルギー。",
+    formulas:[
+      {html:'<a href="#Ep" class="chip self">E<sub>p</sub></a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#g" class="chip">g</a><span class="op">×</span><a href="#h" class="chip">h</a>', note:"重力による位置エネルギー"}
+    ]},
+  Es:{cat:"energy",disp:"E<sub>s</sub>",name:"弾性エネルギー",unit:"J",
+    meaning:"変形したばねが蓄えているエネルギー。",
+    formulas:[
+      {html:'<a href="#Es" class="chip self">E<sub>s</sub></a><span class="op">= ½ ×</span><a href="#k" class="chip">k</a><span class="op">×</span><a href="#x" class="chip">x</a><span class="op">²</span>', note:"ばねの弾性エネルギー"}
+    ]},
+  E:{cat:"energy",disp:"E",name:"力学的エネルギー",unit:"J",
+    meaning:"運動エネルギーと位置エネルギーの和。摩擦などがなければ保存される。",
+    formulas:[
+      {html:'<a href="#E" class="chip self">E</a><span class="op">=</span><a href="#Ek" class="chip">E<sub>k</sub></a><span class="op">+</span><a href="#Ep" class="chip">E<sub>p</sub></a>', note:"力学的エネルギー保存則"}
+    ]},
+  h:{cat:"energy",disp:"h",name:"高さ",unit:"m",
+    meaning:"基準面からの高さ。位置エネルギーの計算に使う。",
+    formulas:[
+      {html:'<a href="#h" class="chip self">h</a><span class="op">=</span><a href="#Ep" class="chip">E<sub>p</sub></a><span class="op">÷(</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#g" class="chip">g</a><span class="op">)</span>', note:"位置エネルギーの式を変形"}
+    ]},
+
+  /* ---------- 運動量・衝突 ---------- */
+  p:{cat:"momentum",disp:"p",name:"運動量",unit:"kg·m/s",
+    meaning:"物体の運動の勢いを表す量。質量と速度の積。",
+    formulas:[
+      {html:'<a href="#p" class="chip self">p</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#v" class="chip">v</a>', note:"運動量の定義"}
+    ]},
+  J:{cat:"momentum",disp:"J",name:"力積",unit:"N·s",
+    meaning:"力がある時間だけ物体に働いたときの、力と時間の積。運動量の変化に等しい。",
+    formulas:[
+      {html:'<a href="#J" class="chip self">J</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">× Δ</span><a href="#t" class="chip">t</a>', note:"力積の定義"},
+      {html:'<a href="#J" class="chip self">J</a><span class="op">= Δ</span><a href="#p" class="chip">p</a>', note:"力積と運動量の関係（力積－運動量定理）"}
+    ]},
+  e:{cat:"momentum",disp:"e",name:"反発係数（はねかえり係数）",unit:"無次元（0〜1）",
+    meaning:"衝突の前後で、物体どうしが離れる速さと近づく速さの比。1なら弾性衝突、0なら完全非弾性衝突。",
+    formulas:[
+      {html:'<span class="op">e = 衝突後の相対速度 ÷ 衝突前の相対速度</span>', note:"符号は必ず正の値になるよう向きを揃える"}
+    ]},
+
+  /* ---------- 円運動・回転運動 ---------- */
+  theta:{cat:"rotation",disp:"θ",name:"角度",unit:"rad または °",
+    meaning:"回転や、力・速度の向きを表す角度。",
+    formulas:[
+      {html:'<span class="op">sin</span><a href="#theta" class="chip self">θ</a><span class="op">=</span><a href="#tau" class="chip">τ</a><span class="op">÷(</span><a href="#r" class="chip">r</a><span class="op">×</span><a href="#F" class="chip">F</a><span class="op">)</span>', note:"トルクの式を変形（θ自体はarcsinで求める）"}
+    ]},
+  omega:{cat:"rotation",disp:"ω",name:"角速度",unit:"rad/s",
+    meaning:"単位時間あたりの回転角の変化率。回転運動における速度にあたる量。",
+    formulas:[
+      {html:'<a href="#omega" class="chip self">ω</a><span class="op">= Δ</span><a href="#theta" class="chip">θ</a><span class="op">÷ Δ</span><a href="#t" class="chip">t</a>', note:"回転角の変化率としての定義"},
+      {html:'<a href="#omega" class="chip self">ω</a><span class="op">= 2π ÷</span><a href="#T" class="chip">T</a>', note:"周期との関係"}
+    ]},
+  alpha:{cat:"rotation",disp:"α",name:"角加速度",unit:"rad/s²",
+    meaning:"単位時間あたりの角速度の変化率。回転運動における加速度にあたる量。",
+    formulas:[
+      {html:'<a href="#alpha" class="chip self">α</a><span class="op">= Δ</span><a href="#omega" class="chip">ω</a><span class="op">÷ Δ</span><a href="#t" class="chip">t</a>', note:"角速度の変化率としての定義"},
+      {html:'<a href="#alpha" class="chip self">α</a><span class="op">=</span><a href="#tau" class="chip">τ</a><span class="op">÷</span><a href="#I" class="chip">I</a>', note:"回転の運動方程式より"}
+    ]},
+  tau:{cat:"rotation",disp:"τ",name:"トルク（力のモーメント）",unit:"N·m",
+    meaning:"物体を回転させようとする働きの大きさ。",
+    formulas:[
+      {html:'<a href="#tau" class="chip self">τ</a><span class="op">=</span><a href="#r" class="chip">r</a><span class="op">×</span><a href="#F" class="chip">F</a><span class="op">× sin</span><a href="#theta" class="chip">θ</a>', note:"回転軸からの距離と力の垂直成分の積"},
+      {html:'<a href="#tau" class="chip self">τ</a><span class="op">=</span><a href="#I" class="chip">I</a><span class="op">×</span><a href="#alpha" class="chip">α</a>', note:"回転運動の運動方程式"}
+    ]},
+  r:{cat:"rotation",disp:"r",name:"回転半径（腕の長さ）",unit:"m",
+    meaning:"回転軸から力の作用点、または物体までの距離。",
+    formulas:[
+      {html:'<a href="#r" class="chip self">r</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">² ÷</span><a href="#F" class="chip">F</a>', note:"向心力の式を変形"},
+      {html:'<a href="#r" class="chip self">r</a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">² ÷</span><a href="#ac" class="chip">a<sub>c</sub></a>', note:"向心加速度の式を変形"}
+    ]},
+  I:{cat:"rotation",disp:"I",name:"慣性モーメント",unit:"kg·m²",
+    meaning:"物体の回転のしにくさを表す量。質量とその分布（回転軸からの距離）で決まる。",
+    formulas:[
+      {html:'<a href="#I" class="chip self">I</a><span class="op">=</span><a href="#L" class="chip">L</a><span class="op">÷</span><a href="#omega" class="chip">ω</a>', note:"角運動量の式を変形"},
+      {html:'<a href="#I" class="chip self">I</a><span class="op">=</span><a href="#tau" class="chip">τ</a><span class="op">÷</span><a href="#alpha" class="chip">α</a>', note:"回転の運動方程式を変形"}
+    ]},
+  L:{cat:"rotation",disp:"L",name:"角運動量",unit:"kg·m²/s",
+    meaning:"回転運動の勢いを表す量。",
+    formulas:[
+      {html:'<a href="#L" class="chip self">L</a><span class="op">=</span><a href="#I" class="chip">I</a><span class="op">×</span><a href="#omega" class="chip">ω</a>', note:"角運動量の定義"}
+    ]},
+  T:{cat:"rotation",disp:"T",name:"周期",unit:"s",
+    meaning:"円運動や振動が1回繰り返されるのにかかる時間。",
+    formulas:[
+      {html:'<a href="#T" class="chip self">T</a><span class="op">= 2π ÷</span><a href="#omega" class="chip">ω</a>', note:"角速度との関係"},
+      {html:'<a href="#T" class="chip self">T</a><span class="op">= 1 ÷</span><a href="#freq" class="chip">f</a>', note:"振動数との関係"},
+      {html:'<a href="#T" class="chip self">T</a><span class="op">= 2π × √(</span><a href="#l" class="chip">l</a><span class="op">÷</span><a href="#g" class="chip">g</a><span class="op">)</span>', note:"単振り子の周期"},
+      {html:'<a href="#T" class="chip self">T</a><span class="op">= 2π × √(</span><a href="#m" class="chip">m</a><span class="op">÷</span><a href="#k" class="chip">k</a><span class="op">)</span>', note:"ばね振り子の周期"}
+    ]},
+  freq:{cat:"rotation",disp:"f",name:"振動数（周波数）",unit:"Hz",
+    meaning:"1秒間に繰り返す振動・回転の回数。摩擦力の f とは別の量なので文脈で区別する。",
+    formulas:[
+      {html:'<a href="#freq" class="chip self">f</a><span class="op">= 1 ÷</span><a href="#T" class="chip">T</a>', note:"周期との関係"},
+      {html:'<a href="#freq" class="chip self">f</a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">÷</span><a href="#lambda" class="chip">λ</a>', note:"波の基本式を変形"}
+    ]},
+  ac:{cat:"rotation",disp:"a<sub>c</sub>",name:"向心加速度",unit:"m/s²",
+    meaning:"円運動で中心方向に生じる加速度。速さが一定でも向きが変わり続けるために生じる。",
+    formulas:[
+      {html:'<a href="#ac" class="chip self">a<sub>c</sub></a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">² ÷</span><a href="#r" class="chip">r</a>', note:"速さと半径から求める"},
+      {html:'<a href="#ac" class="chip self">a<sub>c</sub></a><span class="op">=</span><a href="#r" class="chip">r</a><span class="op">×</span><a href="#omega" class="chip">ω</a><span class="op">²</span>', note:"角速度と半径から求める"}
+    ]},
+
+  /* ---------- 万有引力・振動 ---------- */
+  G:{cat:"gravity",disp:"G",name:"万有引力定数",unit:"N·m²/kg²",
+    meaning:"あらゆる質量の間に働く引力の強さを決める普遍定数。値そのものは実験（キャベンディッシュの実験など）で測定されるが、万有引力の式を変形しても表せる。",
+    formulas:[
+      {html:'<a href="#G" class="chip self">G</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">×</span><a href="#r" class="chip">r</a><span class="op">² ÷(</span><a href="#M" class="chip">M</a><span class="op">×</span><a href="#m" class="chip">m</a><span class="op">)</span>', note:"万有引力の法則を変形"}
+    ]},
+  M:{cat:"gravity",disp:"M",name:"質量（大きい方の天体など）",unit:"kg",
+    meaning:"万有引力の式で、地球や惑星など基準となる側の質量を表す記号。",
+    formulas:[
+      {html:'<a href="#M" class="chip self">M</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">×</span><a href="#r" class="chip">r</a><span class="op">² ÷(</span><a href="#G" class="chip">G</a><span class="op">×</span><a href="#m" class="chip">m</a><span class="op">)</span>', note:"万有引力の法則を変形"}
+    ]},
+  l:{cat:"gravity",disp:"l",name:"振り子の長さ",unit:"m",
+    meaning:"支点からおもりまでの糸の長さ。単振り子の周期を決める。",
+    formulas:[
+      {html:'<a href="#l" class="chip self">l</a><span class="op">=</span><a href="#g" class="chip">g</a><span class="op">×</span><a href="#T" class="chip">T</a><span class="op">² ÷ 4π²</span>', note:"単振り子の周期の式を変形"}
+    ]},
+
+  /* ---------- 熱と気体 ---------- */
+  heatQ:{cat:"thermo",disp:"Q",name:"熱量",unit:"J",
+    meaning:"物体が得たり失ったりする熱の量。",
+    formulas:[
+      {html:'<a href="#heatQ" class="chip self">Q</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#c" class="chip">c</a><span class="op">× Δ</span><a href="#Temp" class="chip">T</a>', note:"比熱を使った熱量の式"},
+      {html:'<a href="#heatQ" class="chip self">Q</a><span class="op">=</span><a href="#Cheat" class="chip">C</a><span class="op">× Δ</span><a href="#Temp" class="chip">T</a>', note:"熱容量を使った熱量の式"}
+    ]},
+  c:{cat:"thermo",disp:"c",name:"比熱",unit:"J/(g·K)",
+    meaning:"物質1gの温度を1K上げるのに必要な熱量。物質の種類で決まる。",
+    formulas:[
+      {html:'<a href="#c" class="chip self">c</a><span class="op">=</span><a href="#heatQ" class="chip">Q</a><span class="op">÷(</span><a href="#m" class="chip">m</a><span class="op">× Δ</span><a href="#Temp" class="chip">T</a><span class="op">)</span>', note:"熱量の式を変形"}
+    ]},
+  Cheat:{cat:"thermo",disp:"C",name:"熱容量",unit:"J/K",
+    meaning:"物体全体の温度を1K上げるのに必要な熱量。",
+    formulas:[
+      {html:'<a href="#Cheat" class="chip self">C</a><span class="op">=</span><a href="#heatQ" class="chip">Q</a><span class="op">÷ Δ</span><a href="#Temp" class="chip">T</a>', note:"熱量の式を変形"},
+      {html:'<a href="#Cheat" class="chip self">C</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#c" class="chip">c</a>', note:"質量と比熱の積"}
+    ]},
+  Temp:{cat:"thermo",disp:"T",name:"温度",unit:"K（絶対温度）",
+    meaning:"物質を構成する粒子の熱運動の激しさを表す量。気体の状態方程式にも登場する。周期・張力のTとは別の量。",
+    formulas:[
+      {html:'<a href="#Temp" class="chip self">T</a><span class="op">=</span><a href="#press" class="chip">p</a><span class="op">×</span><a href="#V" class="chip">V</a><span class="op">÷(</span><a href="#n_mole" class="chip">n</a><span class="op">×</span><a href="#Rgas" class="chip">R</a><span class="op">)</span>', note:"気体の状態方程式を変形"}
+    ]},
+  n_mole:{cat:"thermo",disp:"n",name:"物質量（モル数）",unit:"mol",
+    meaning:"気体の量を表す基本量。1molは アボガドロ数個の粒子の集まり。",
+    formulas:[
+      {html:'<a href="#n_mole" class="chip self">n</a><span class="op">=</span><a href="#press" class="chip">p</a><span class="op">×</span><a href="#V" class="chip">V</a><span class="op">÷(</span><a href="#Rgas" class="chip">R</a><span class="op">×</span><a href="#Temp" class="chip">T</a><span class="op">)</span>', note:"気体の状態方程式を変形"}
+    ]},
+  Rgas:{cat:"thermo",disp:"R",name:"気体定数",unit:"J/(mol·K)",
+    meaning:"気体の状態方程式に現れる普遍定数。",
+    formulas:[
+      {html:'<a href="#Rgas" class="chip self">R</a><span class="op">=</span><a href="#press" class="chip">p</a><span class="op">×</span><a href="#V" class="chip">V</a><span class="op">÷(</span><a href="#n_mole" class="chip">n</a><span class="op">×</span><a href="#Temp" class="chip">T</a><span class="op">)</span>', note:"気体の状態方程式を変形"}
+    ]},
+  press:{cat:"thermo",disp:"p",name:"圧力（気体）",unit:"Pa",
+    meaning:"気体が単位面積あたりに及ぼす力。運動量の p とは別の量。",
+    formulas:[
+      {html:'<a href="#press" class="chip self">p</a><span class="op">=</span><a href="#n_mole" class="chip">n</a><span class="op">×</span><a href="#Rgas" class="chip">R</a><span class="op">×</span><a href="#Temp" class="chip">T</a><span class="op">÷</span><a href="#V" class="chip">V</a>', note:"気体の状態方程式（ボイル・シャルルの法則）"}
+    ]},
+  U:{cat:"thermo",disp:"U",name:"内部エネルギー",unit:"J",
+    meaning:"気体分子の運動エネルギーなどの総和。熱力学第一法則で変化量として扱う。",
+    formulas:[
+      {html:'<span class="op">Δ</span><a href="#U" class="chip self">U</a><span class="op">=</span><a href="#heatQ" class="chip">Q</a><span class="op">+</span><a href="#W" class="chip">W</a>', note:"熱力学第一法則（気体が吸収した熱とされた仕事の和）"}
+    ]},
+
+  /* ---------- 波動・光 ---------- */
+  lambda:{cat:"wave",disp:"λ",name:"波長",unit:"m",
+    meaning:"波1回分の長さ。山から山（谷から谷）までの距離。",
+    formulas:[
+      {html:'<a href="#lambda" class="chip self">λ</a><span class="op">=</span><a href="#v" class="chip">v</a><span class="op">÷</span><a href="#freq" class="chip">f</a>', note:"波の基本式を変形"},
+      {html:'<a href="#lambda" class="chip self">λ</a><span class="op">=</span><a href="#hplanck" class="chip">h</a><span class="op">÷</span><a href="#p" class="chip">p</a>', note:"ド・ブロイ波長（物質波）"}
+    ]},
+  clight:{cat:"wave",disp:"c",name:"光速",unit:"m/s（≈3.0×10⁸、定数）",
+    meaning:"真空中を光が伝わる速さ。あらゆる観測者に対して一定という特別な定数。",
+    formulas:[
+      {html:'<a href="#clight" class="chip self">c</a><span class="op">=</span><a href="#nref" class="chip">n</a><span class="op">×</span><a href="#v" class="chip">v</a>', note:"屈折率の定義を変形"}
+    ]},
+  nref:{cat:"wave",disp:"n",name:"屈折率",unit:"無次元",
+    meaning:"光が物質中でどれだけ遅く・曲がって進むかを表す比。真空に対する比を絶対屈折率という。物質量(モル数)の n とは別の量。",
+    formulas:[
+      {html:'<a href="#nref" class="chip self">n</a><span class="op">=</span><a href="#clight" class="chip">c</a><span class="op">÷</span><a href="#v" class="chip">v</a>', note:"屈折率の定義"},
+      {html:'<span class="op">n₁ sinθ₁ = n₂ sinθ₂ （スネルの法則、境界面での屈折）</span>', note:"2つの媒質の境界での関係（θは境界の法線からの角度）"}
+    ]},
+  flens:{cat:"wave",disp:"f",name:"焦点距離（レンズ・鏡）",unit:"m",
+    meaning:"レンズや鏡が光を集める（発散させる）強さを表す距離。振動数・摩擦力の f とは別の量。",
+    formulas:[
+      {html:'1÷<a href="#aobj" class="chip">a</a><span class="op">+ 1÷</span><a href="#bimg" class="chip">b</a><span class="op">= 1÷</span><a href="#flens" class="chip self">f</a>', note:"レンズ・鏡の公式"}
+    ]},
+  aobj:{cat:"wave",disp:"a",name:"物体距離",unit:"m",
+    meaning:"レンズ・鏡から物体までの距離。加速度の a とは別の量。",
+    formulas:[
+      {html:'1÷<a href="#aobj" class="chip self">a</a><span class="op">+ 1÷</span><a href="#bimg" class="chip">b</a><span class="op">= 1÷</span><a href="#flens" class="chip">f</a>', note:"レンズ・鏡の公式"}
+    ]},
+  bimg:{cat:"wave",disp:"b",name:"像距離",unit:"m",
+    meaning:"レンズ・鏡から像ができる位置までの距離。力積の記号などとは無関係の独立した量。",
+    formulas:[
+      {html:'1÷<a href="#aobj" class="chip">a</a><span class="op">+ 1÷</span><a href="#bimg" class="chip self">b</a><span class="op">= 1÷</span><a href="#flens" class="chip">f</a>', note:"レンズ・鏡の公式"}
+    ]},
+  mmag:{cat:"wave",disp:"m",name:"倍率（レンズ・鏡）",unit:"無次元",
+    meaning:"像の大きさが物体の何倍かを表す比。質量の m とは別の量。",
+    formulas:[
+      {html:'<a href="#mmag" class="chip self">m</a><span class="op">=</span><a href="#bimg" class="chip">b</a><span class="op">÷</span><a href="#aobj" class="chip">a</a>', note:"像距離と物体距離の比"}
+    ]},
+
+  /* ---------- 電気・磁気 ---------- */
+  q:{cat:"electric",disp:"q",name:"電気量（電荷）",unit:"C",
+    meaning:"物体が帯びている電気の量。",
+    formulas:[
+      {html:'<a href="#q" class="chip self">q</a><span class="op">=</span><a href="#Ccap" class="chip">C</a><span class="op">×</span><a href="#Vvolt" class="chip">V</a>', note:"コンデンサーに蓄えられる電気量"}
+    ]},
+  Vvolt:{cat:"electric",disp:"V",name:"電圧",unit:"V",
+    meaning:"電流を流そうとするはたらきの大きさ。体積の V とは別の量。",
+    formulas:[
+      {html:'<a href="#Vvolt" class="chip self">V</a><span class="op">=</span><a href="#Iamp" class="chip">I</a><span class="op">×</span><a href="#Rres" class="chip">R</a>', note:"オームの法則"},
+      {html:'<a href="#Vvolt" class="chip self">V</a><span class="op">=</span><a href="#q" class="chip">q</a><span class="op">÷</span><a href="#Ccap" class="chip">C</a>', note:"コンデンサーの式を変形"},
+      {html:'<a href="#Vvolt" class="chip self">V</a><span class="op">= Δ</span><a href="#Phi" class="chip">Φ</a><span class="op">÷ Δ</span><a href="#t" class="chip">t</a>', note:"電磁誘導の法則（誘導起電力の大きさ）"}
+    ]},
+  Iamp:{cat:"electric",disp:"I",name:"電流",unit:"A",
+    meaning:"導線を単位時間に流れる電気量。慣性モーメントの I とは別の量。",
+    formulas:[
+      {html:'<a href="#Iamp" class="chip self">I</a><span class="op">=</span><a href="#Vvolt" class="chip">V</a><span class="op">÷</span><a href="#Rres" class="chip">R</a>', note:"オームの法則を変形"}
+    ]},
+  Rres:{cat:"electric",disp:"R",name:"電気抵抗",unit:"Ω",
+    meaning:"電流の流れにくさを表す量。抗力・気体定数の R とは別の量。",
+    formulas:[
+      {html:'<a href="#Rres" class="chip self">R</a><span class="op">=</span><a href="#Vvolt" class="chip">V</a><span class="op">÷</span><a href="#Iamp" class="chip">I</a>', note:"オームの法則を変形"}
+    ]},
+  Pelec:{cat:"electric",disp:"P",name:"電力",unit:"W",
+    meaning:"電気が単位時間にする仕事（消費エネルギー）。仕事率の P とは別の量。",
+    formulas:[
+      {html:'<a href="#Pelec" class="chip self">P</a><span class="op">=</span><a href="#Vvolt" class="chip">V</a><span class="op">×</span><a href="#Iamp" class="chip">I</a>', note:"電力の定義"},
+      {html:'<a href="#Pelec" class="chip self">P</a><span class="op">=</span><a href="#Iamp" class="chip">I</a><span class="op">² ×</span><a href="#Rres" class="chip">R</a>', note:"オームの法則を代入"},
+      {html:'<a href="#Pelec" class="chip self">P</a><span class="op">=</span><a href="#Vvolt" class="chip">V</a><span class="op">² ÷</span><a href="#Rres" class="chip">R</a>', note:"オームの法則を代入"}
+    ]},
+  Welec:{cat:"electric",disp:"W",name:"電力量",unit:"J",
+    meaning:"電気が実際にした仕事の総量。仕事(力学)の W とは別の量。",
+    formulas:[
+      {html:'<a href="#Welec" class="chip self">W</a><span class="op">=</span><a href="#Pelec" class="chip">P</a><span class="op">×</span><a href="#t" class="chip">t</a>', note:"電力と時間の積"}
+    ]},
+  Ccap:{cat:"electric",disp:"C",name:"電気容量",unit:"F",
+    meaning:"コンデンサーが電気を蓄える能力を表す量。熱容量の C とは別の量。",
+    formulas:[
+      {html:'<a href="#Ccap" class="chip self">C</a><span class="op">=</span><a href="#q" class="chip">q</a><span class="op">÷</span><a href="#Vvolt" class="chip">V</a>', note:"コンデンサーの式を変形"}
+    ]},
+  Efield:{cat:"electric",disp:"E",name:"電場（電界）",unit:"N/C",
+    meaning:"電気を帯びた物体が電荷に及ぼす力の場。力学的エネルギーの E とは別の量。",
+    formulas:[
+      {html:'<a href="#Efield" class="chip self">E</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷</span><a href="#q" class="chip">q</a>', note:"単位電荷あたりに働く力"}
+    ]},
+  B:{cat:"electric",disp:"B",name:"磁束密度",unit:"T",
+    meaning:"磁場の強さを表す量。",
+    formulas:[
+      {html:'<a href="#B" class="chip self">B</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷(</span><a href="#q" class="chip">q</a><span class="op">×</span><a href="#v" class="chip">v</a><span class="op">)</span>', note:"ローレンツ力の式を変形"},
+      {html:'<a href="#B" class="chip self">B</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷(</span><a href="#Iamp" class="chip">I</a><span class="op">×</span><a href="#Lwire" class="chip">L</a><span class="op">)</span>', note:"電流が磁場から受ける力の式を変形"}
+    ]},
+  Lwire:{cat:"electric",disp:"L",name:"導線の長さ",unit:"m",
+    meaning:"磁場の中にある導線のうち、磁場に力を受ける部分の長さ。角運動量の L とは別の量。",
+    formulas:[
+      {html:'<a href="#Lwire" class="chip self">L</a><span class="op">=</span><a href="#F" class="chip">F</a><span class="op">÷(</span><a href="#B" class="chip">B</a><span class="op">×</span><a href="#Iamp" class="chip">I</a><span class="op">)</span>', note:"電流が磁場から受ける力の式を変形"}
+    ]},
+  Phi:{cat:"electric",disp:"Φ",name:"磁束",unit:"Wb",
+    meaning:"ある面を貫く磁場の量。電磁誘導の起電力を決める。",
+    formulas:[
+      {html:'<a href="#Phi" class="chip self">Φ</a><span class="op">=</span><a href="#B" class="chip">B</a><span class="op">×</span><a href="#S" class="chip">S</a>', note:"磁束密度と面積の積"}
+    ]},
+  kcoulomb:{cat:"electric",disp:"k",name:"クーロンの法則の定数",unit:"N·m²/C²",
+    meaning:"電荷どうしに働く力の強さを決める比例定数。ばね定数の k とは別の量。",
+    formulas:[
+      {html:'<span class="op">F = k × q₁ × q₂ ÷</span><a href="#r" class="chip">r</a><span class="op">²（クーロンの法則）</span>', note:"2つの点電荷q₁,q₂の間に働く力"}
+    ]},
+  S:{cat:"electric",disp:"S",name:"面積",unit:"m²",
+    meaning:"磁束や圧力の計算に使う面の広さ。",
+    formulas:[
+      {html:'<a href="#S" class="chip self">S</a><span class="op">=</span><a href="#Phi" class="chip">Φ</a><span class="op">÷</span><a href="#B" class="chip">B</a>', note:"磁束の式を変形"}
+    ]},
+
+  /* ---------- 原子 ---------- */
+  hplanck:{cat:"atomic",disp:"h",name:"プランク定数",unit:"J·s（定数）",
+    meaning:"光や物質の粒子性・波動性を結びつける普遍定数。",
+    formulas:[
+      {html:'<a href="#hplanck" class="chip self">h</a><span class="op">=</span><a href="#Ephoton" class="chip">E</a><span class="op">÷</span><a href="#freq" class="chip">f</a>', note:"光子のエネルギーの式を変形"},
+      {html:'<a href="#hplanck" class="chip self">h</a><span class="op">=</span><a href="#lambda" class="chip">λ</a><span class="op">×</span><a href="#p" class="chip">p</a>', note:"ド・ブロイ波長の式を変形"}
+    ]},
+  Ephoton:{cat:"atomic",disp:"E",name:"光子のエネルギー",unit:"J",
+    meaning:"光を粒子（光子）とみなしたときに、1個の光子が持つエネルギー。力学的エネルギーの E とは別の量。",
+    formulas:[
+      {html:'<a href="#Ephoton" class="chip self">E</a><span class="op">=</span><a href="#hplanck" class="chip">h</a><span class="op">×</span><a href="#freq" class="chip">f</a>', note:"光子のエネルギー"},
+      {html:'<a href="#Ephoton" class="chip self">E</a><span class="op">=</span><a href="#W0" class="chip">W₀</a><span class="op">+</span><a href="#Ek" class="chip">E<sub>k</sub></a>', note:"光電効果（仕事関数＋飛び出す電子の運動エネルギー）"}
+    ]},
+  W0:{cat:"atomic",disp:"W₀",name:"仕事関数",unit:"J",
+    meaning:"金属から電子を1個取り出すのに必要な最小のエネルギー。",
+    formulas:[
+      {html:'<a href="#W0" class="chip self">W₀</a><span class="op">=</span><a href="#Ephoton" class="chip">E</a><span class="op">−</span><a href="#Ek" class="chip">E<sub>k</sub></a>', note:"光電効果の式を変形"}
+    ]},
+  Emc2:{cat:"atomic",disp:"E",name:"静止質量エネルギー",unit:"J",
+    meaning:"質量とエネルギーが等価であることを示す量。質量が消滅すると莫大なエネルギーになる。力学的エネルギーの E とは別の量。",
+    formulas:[
+      {html:'<a href="#Emc2" class="chip self">E</a><span class="op">=</span><a href="#m" class="chip">m</a><span class="op">×</span><a href="#clight" class="chip">c</a><span class="op">²</span>', note:"アインシュタインの質量とエネルギーの等価性"}
+    ]}
+};
+
+
+Object.keys(DATA).forEach(id => DATA[id].id = id);
+
+// 逆引きインデックス：どの記号がどの公式に「登場」しているか
+const usedInIndex = {};
+Object.keys(DATA).forEach(id => usedInIndex[id] = new Set());
+Object.entries(DATA).forEach(([id, entry]) => {
+  entry.formulas.forEach(fm => {
+    const refs = [...fm.html.matchAll(/href="#(\w+)"/g)].map(m => m[1]);
+    refs.forEach(ref => { if (ref !== id && DATA[ref]) usedInIndex[ref].add(id); });
+  });
+});
+
+const main = document.getElementById('main');
+const crumbs = document.getElementById('crumbs');
+const searchBox = document.getElementById('searchBox');
+const searchInput = document.getElementById('searchInput');
+
+function tileHTML(e){
+  return `<a class="tile" data-name="${e.name}" href="#${e.id}">
+      <span class="unit">${e.unit.split('（')[0].split(' ')[0]}</span>
+      <span class="sym">${e.disp}</span>
+      <span class="nm">${e.name}</span>
+    </a>`;
+}
+
+function renderIndex(){
+  crumbs.innerHTML = '<span style="color:var(--cyan)">INDEX</span>';
+  searchBox.style.display = 'block';
+  searchInput.value = '';
+
+  const total = Object.keys(DATA).length;
+  const blocks = CATS.map(c => {
+    const items = Object.values(DATA).filter(e => e.cat === c.id);
+    return `<div class="cat-block" data-cat="${c.id}">
+      <div class="cat-title">${c.label} <span class="cat-count">(${items.length})</span></div>
+      <div class="grid">${items.map(tileHTML).join('')}</div>
+    </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin:0 2px 18px;">全 ${total} 記号 / カテゴリ別</div>
+    <a href="#quiz" class="tile" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;">
+      <span style="font-size:20px;">🎲</span>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--cyan);">記号穴埋めクイズに挑戦する</span>
+    </a>
+    ${blocks}
+  `;
+
+  searchInput.oninput = () => {
+    const q = searchInput.value.trim();
+    document.querySelectorAll('.tile').forEach(t => {
+      t.classList.toggle('hidden', q && !t.dataset.name.includes(q));
+    });
+    document.querySelectorAll('.cat-block').forEach(b => {
+      const visible = [...b.querySelectorAll('.tile')].some(t => !t.classList.contains('hidden'));
+      b.style.display = visible ? '' : 'none';
+    });
+  };
+}
+
+function renderPage(id){
+  const e = DATA[id];
+  if(!e){ renderIndex(); return; }
+  searchBox.style.display = 'none';
+
+  const catLabel = CATS.find(c => c.id === e.cat).label;
+  crumbs.innerHTML = `<a href="#">INDEX</a><span class="sep">/</span><span style="color:var(--cyan)">${e.disp.replace(/<[^>]+>/g,'')} — ${e.name}</span>`;
+
+  const formulasHTML = e.formulas.length
+    ? e.formulas.map(fm => `
+        <div class="formula-card">
+          <div class="formula-expr">${fm.html}</div>
+          <div class="formula-note">${fm.note}</div>
+        </div>`).join('')
+    : `<p class="empty-note">この記号を定義する公式はありません（基本量・定数として扱われます）。</p>`;
+
+  const usedIn = [...usedInIndex[id]];
+  const usedInHTML = usedIn.length
+    ? `<div class="used-in">${usedIn.map(uid => `<a href="#${uid}">${DATA[uid].disp} <span style="color:var(--text-dim)">${DATA[uid].name}</span></a>`).join('')}</div>`
+    : `<p class="empty-note">他の公式には登場しません。</p>`;
+
+  main.innerHTML = `
+    <div class="sheet">
+      <div class="sym-head">
+        <div class="sym-big">${e.disp}</div>
+        <div class="sym-meta">
+          <div class="cat-pill">${catLabel}</div>
+          <h2>${e.name}</h2>
+          <span class="unit-tag">単位: ${e.unit}</span>
+        </div>
+      </div>
+      <p class="meaning">${e.meaning}</p>
+
+      <div class="section-label">この記号を求める公式</div>
+      ${formulasHTML}
+
+      <div class="section-label">他の公式での使用例</div>
+      ${usedInHTML}
+    </div>
+    <div class="back-index"><a href="#">&larr; 記号一覧に戻る</a></div>
+  `;
+}
+
+/* ---------- クイズ機能（公式の記号を全部空欄にして入力する方式） ---------- */
+let quizScore = {correct:0, total:0};
+let currentQuiz = null;
+
+// 記号ごとの正答リスト（exact: 大文字小文字を区別して比較 / loose: 読みなどを大文字小文字区別せず許容）
+const ANSWER_MAP = {
+  x:{exact:["x"]}, v:{exact:["v"]}, v0:{exact:["v0","v₀"]}, a:{exact:["a"]}, t:{exact:["t"]},
+  F:{exact:["F"]}, m:{exact:["m"]}, g:{exact:["g"]}, N:{exact:["N"]}, f:{exact:["f"]},
+  mu:{exact:["μ"], loose:["mu"]}, k:{exact:["k"]}, Tt:{exact:["T"]}, R:{exact:["R"]},
+  Fb:{exact:["Fb","F_b"]}, rho:{exact:["ρ"], loose:["rho"]}, V:{exact:["V"]}, W:{exact:["W"]},
+  P:{exact:["P"]}, Ek:{exact:["Ek","E_k"]}, Ep:{exact:["Ep","E_p"]}, Es:{exact:["Es","E_s"]},
+  E:{exact:["E"]}, h:{exact:["h"]}, p:{exact:["p"]}, J:{exact:["J"]}, e:{exact:["e"]},
+  theta:{exact:["θ"], loose:["theta"]}, omega:{exact:["ω"], loose:["omega"]},
+  alpha:{exact:["α"], loose:["alpha"]}, tau:{exact:["τ"], loose:["tau"]}, r:{exact:["r"]},
+  I:{exact:["I"]}, L:{exact:["L"]}, T:{exact:["T"]}, freq:{exact:["f"]}, ac:{exact:["ac","a_c"]},
+  G:{exact:["G"]}, M:{exact:["M"]}, l:{exact:["l"]},
+  heatQ:{exact:["Q"]}, c:{exact:["c"]}, Cheat:{exact:["C"]}, Temp:{exact:["T"]},
+  n_mole:{exact:["n"]}, Rgas:{exact:["R"]}, press:{exact:["p"]}, U:{exact:["U"]},
+  lambda:{exact:["λ"], loose:["lambda"]}, clight:{exact:["c"]}, nref:{exact:["n"]},
+  flens:{exact:["f"]}, aobj:{exact:["a"]}, bimg:{exact:["b"]}, mmag:{exact:["m"]},
+  q:{exact:["q"]}, Vvolt:{exact:["V"]}, Iamp:{exact:["I"]}, Rres:{exact:["R"]},
+  Pelec:{exact:["P"]}, Welec:{exact:["W"]}, Ccap:{exact:["C"]}, Efield:{exact:["E"]},
+  B:{exact:["B"]}, Lwire:{exact:["L"]}, Phi:{exact:["Φ"], loose:["phi"]}, kcoulomb:{exact:["k"]},
+  S:{exact:["S"]}, hplanck:{exact:["h"]}, Ephoton:{exact:["E"]}, W0:{exact:["W0","W_0","W₀"]},
+  Emc2:{exact:["E"]}
+};
+
+function checkQuizInput(id, raw){
+  const val = (raw || '').trim();
+  if(!val) return false;
+  const spec = ANSWER_MAP[id];
+  if(!spec) return false;
+  if(spec.exact && spec.exact.includes(val)) return true;
+  if(spec.loose && spec.loose.some(w => w.toLowerCase() === val.toLowerCase())) return true;
+  return false;
+}
+
+function buildQuizPool(){
+  const pool = [];
+  Object.values(DATA).forEach(entry=>{
+    entry.formulas.forEach(fm=>{
+      const matches = [...fm.html.matchAll(/<a href="#(\w+)" class="(chip[^"]*)">(.*?)<\/a>/g)];
+      const nonSelf = matches.filter(m => !m[2].includes('self'));
+      if(nonSelf.length >= 1){ pool.push({entry, fm, nonSelf}); }
+    });
+  });
+  return pool;
+}
+
+function nextQuizQuestion(){
+  const pool = buildQuizPool();
+  const picked = pool[Math.floor(Math.random()*pool.length)];
+
+  let html = picked.fm.html;
+  const blanks = picked.nonSelf.map(m => ({id:m[1], disp:m[3]}));
+  // 後ろから置換してインデックスのズレを防ぐ（自分自身の記号はそのまま残す）
+  for(let i = picked.nonSelf.length - 1; i >= 0; i--){
+    const m = picked.nonSelf[i];
+    const start = m.index, end = start + m[0].length;
+    const inputTag = `<input type="text" class="quiz-input" data-blank="${i}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`;
+    html = html.slice(0,start) + inputTag + html.slice(end);
+  }
+
+  currentQuiz = { entry: picked.entry, note: picked.fm.note, blankedHtml: html, blanks, submitted:false };
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const q = currentQuiz;
+  main.innerHTML = `
+    <div class="quiz-score">
+      正解数 <span class="num">${quizScore.correct}</span> / <span class="num">${quizScore.total}</span>
+    </div>
+    <p class="quiz-prompt">この公式の空欄すべてに記号を入力してね（ギリシャ文字は theta, omega, mu, rho, lambda, phi, alpha, tau のようにローマ字入力でもOK）</p>
+    <div class="quiz-formula-card">
+      <div class="quiz-formula">${q.blankedHtml}</div>
+      <div class="quiz-note">${q.note}</div>
+    </div>
+    <div class="quiz-actions" id="quizActions">
+      <button class="quiz-submit" id="quizSubmitBtn">採点する</button>
+    </div>
+  `;
+
+  const inputs = [...main.querySelectorAll('.quiz-input')];
+  inputs.forEach((el, idx) => {
+    el.addEventListener('keydown', (ev) => {
+      if(ev.key === 'Enter'){
+        ev.preventDefault();
+        if(!currentQuiz.submitted && idx < inputs.length - 1){ inputs[idx+1].focus(); }
+        else { submitQuiz(); }
+      }
+    });
+  });
+  if(inputs.length) inputs[0].focus();
+
+  document.getElementById('quizSubmitBtn').addEventListener('click', submitQuiz);
+}
+
+function submitQuiz(){
+  const q = currentQuiz;
+  if(q.submitted) return;
+  q.submitted = true;
+
+  const inputs = [...main.querySelectorAll('.quiz-input')];
+  let correctCount = 0;
+  inputs.forEach(el => {
+    const idx = Number(el.dataset.blank);
+    const blank = q.blanks[idx];
+    const ok = checkQuizInput(blank.id, el.value);
+    el.disabled = true;
+    if(ok){
+      el.classList.add('q-correct');
+      correctCount++;
+    } else {
+      el.classList.add('q-wrong');
+      el.value = '';
+      const reveal = document.createElement('span');
+      reveal.className = 'quiz-reveal';
+      reveal.innerHTML = `→ ${blank.disp}`;
+      el.insertAdjacentElement('afterend', reveal);
+    }
+  });
+
+  quizScore.total += q.blanks.length;
+  quizScore.correct += correctCount;
+  document.querySelectorAll('.quiz-score .num')[0].textContent = quizScore.correct;
+  document.querySelectorAll('.quiz-score .num')[1].textContent = quizScore.total;
+
+  document.getElementById('quizActions').innerHTML = `
+    <div class="quiz-result-line">この問題: <span class="num">${correctCount}</span> / <span class="num">${q.blanks.length}</span> 正解</div>
+    <div class="quiz-source-link">出題元: <a href="#${q.entry.id}">${q.entry.disp} — ${q.entry.name}</a></div>
+    <button class="quiz-next" id="quizNextBtn">次の問題 →</button>
+  `;
+  document.getElementById('quizNextBtn').addEventListener('click', nextQuizQuestion);
+}
+
+function renderQuiz(){
+  crumbs.innerHTML = '<a href="#">INDEX</a><span class="sep">/</span><span style="color:var(--cyan)">クイズ</span>';
+  searchBox.style.display = 'none';
+  nextQuizQuestion();
+}
+
+function route(){
+  const id = location.hash.replace('#','');
+  if(!id){ renderIndex(); }
+  else if(id === 'quiz'){ renderQuiz(); }
+  else { renderPage(id); }
+  window.scrollTo(0,0);
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
