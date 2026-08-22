@@ -132,6 +132,9 @@
   .frac-bar{width:100%;height:1px;background:currentColor;margin:2px 0;}
   .eq{padding:0 7px;color:var(--text-dim);}
 
+  .quiz-legend{display:flex;flex-wrap:wrap;gap:7px 16px;margin:-4px 2px 16px;font-size:12px;color:var(--text-dim);}
+  .quiz-legend-item b{font-family:var(--mono);color:var(--cyan);margin-right:5px;font-size:13px;}
+
   /* 公式選択クイズ */
   .quiz-choices{display:flex;flex-direction:column;gap:10px;margin-bottom:8px;}
   .quiz-choices .quiz-grade{width:100%;padding:16px 12px;}
@@ -837,7 +840,12 @@ function parseFormula(html){
 }
 
 function tokensToHtml(str, chips){
-  return str.replace(new RegExp(PH_OPEN+'(\\d+)'+PH_CLOSE,'g'), (m, idx) => `<span class="chip">${chips[idx].disp}</span>`);
+  return str.replace(new RegExp(PH_OPEN+'(\\d+)'+PH_CLOSE,'g'), (m, idx) => `<span class="chip" data-id="${chips[idx].id}">${chips[idx].disp}</span>`);
+}
+
+// 表示テキストだけを取り出す（data-id等の属性差を無視した見た目ベースの重複判定用）
+function visibleText(html){
+  return html.replace(/<[^>]+>/g,'');
 }
 
 function renderFormula(p){
@@ -914,22 +922,24 @@ function mutMultToDiv(p){
 
 function genChoices(parsed, foreignHtmls){
   const correctHtml = renderFormula(parsed);
-  const seen = new Set([correctHtml]);
+  const seen = new Set([visibleText(correctHtml)]);
   const wrongHtmls = [];
   [mutSwapFrac, mutExponent, mutCoefficient, mutSign, mutMultToDiv].forEach(fn => {
     if(wrongHtmls.length >= 3) return;
     const variant = fn(parsed);
     if(!variant) return;
     const html = renderFormula(variant);
-    if(seen.has(html)) return;
-    seen.add(html);
+    const key = visibleText(html);
+    if(seen.has(key)) return;
+    seen.add(key);
     wrongHtmls.push(html);
   });
   const shuffledForeign = [...foreignHtmls].sort(() => Math.random()-0.5);
   while(wrongHtmls.length < 3 && shuffledForeign.length){
     const html = shuffledForeign.pop();
-    if(seen.has(html)) continue;
-    seen.add(html);
+    const key = visibleText(html);
+    if(seen.has(key)) continue;
+    seen.add(key);
     wrongHtmls.push(html);
   }
   const choices = [{html:correctHtml, correct:true}, ...wrongHtmls.map(html => ({html, correct:false}))];
@@ -938,6 +948,21 @@ function genChoices(parsed, foreignHtmls){
     [choices[i], choices[j]] = [choices[j], choices[i]];
   }
   return choices;
+}
+
+// その問題の選択肢に登場する記号すべての「名称」一覧を作る（対象の記号自身は除く）
+function buildLegend(choices, excludeId){
+  const ids = [];
+  const seenIds = new Set([excludeId]);
+  choices.forEach(c => {
+    [...c.html.matchAll(/data-id="(\w+)"/g)].forEach(m => {
+      if(!seenIds.has(m[1]) && DATA[m[1]]){
+        seenIds.add(m[1]);
+        ids.push(m[1]);
+      }
+    });
+  });
+  return ids.map(id => ({disp: DATA[id].disp, name: DATA[id].name}));
 }
 
 function buildQuizPool(){
@@ -961,7 +986,8 @@ function nextQuizQuestion(){
   const foreignHtmls = pool.filter((_,i) => i!==idx).map(p => renderFormula(p.parsed));
   const choices = genChoices(picked.parsed, foreignHtmls);
 
-  currentQuiz = { entry: picked.entry, note: picked.fm.note, choices, answered:false };
+  const legend = buildLegend(choices, picked.entry.id);
+  currentQuiz = { entry: picked.entry, note: picked.fm.note, choices, legend, answered:false };
   renderQuizQuestion();
 }
 
@@ -977,6 +1003,7 @@ function renderQuizQuestion(){
       <div class="quiz-target-sym">${e.disp}</div>
       <div class="quiz-target-name">${e.name}<span class="quiz-target-unit">単位: ${e.unit}</span></div>
     </div>
+    ${q.legend.length ? `<div class="quiz-legend">${q.legend.map(l => `<span class="quiz-legend-item"><b>${l.disp}</b>${l.name}</span>`).join('')}</div>` : ''}
     <div class="quiz-choices" id="quizChoices">
       ${q.choices.map((c,i) => `<button class="quiz-grade" data-idx="${i}"><span class="quiz-choice-formula">${c.html}</span></button>`).join('')}
     </div>
