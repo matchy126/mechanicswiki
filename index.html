@@ -126,6 +126,18 @@
   .quiz-submit:hover{background:var(--amber);}
   .quiz-hint{font-size:11.5px;color:var(--text-dim);margin-top:8px;}
 
+  /* 分数表記 */
+  .frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 5px;line-height:1.3;}
+  .frac-num,.frac-den{padding:0 4px;}
+  .frac-bar{width:100%;height:1px;background:currentColor;margin:2px 0;}
+  .eq{padding:0 7px;color:var(--text-dim);}
+
+  /* 公式選択クイズ */
+  .quiz-choices{display:flex;flex-direction:column;gap:10px;margin-bottom:8px;}
+  .quiz-choices .quiz-grade{width:100%;padding:16px 12px;}
+  .quiz-choice-formula{font-family:var(--mono);font-size:19px;display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1px;}
+  @media (max-width:480px){ .quiz-choice-formula{font-size:16px;} }
+
   @media (max-width:480px){
     .quiz-formula{font-size:18px;}
     .quiz-target-sym{font-size:34px;}
@@ -208,7 +220,7 @@
   </div>
   <p>力学・熱・波動・電気・原子。記号をクリックすると意味と公式のページへ移動します（共通テスト頻出項目中心）。</p>
   <nav class="crumbs" id="crumbs"></nav>
-  <a href="#quiz" class="quiz-nav-btn">🎲 記号穴埋めクイズ</a>
+  <a href="#quiz" class="quiz-nav-btn">🎲 公式選択クイズ</a>
   <div class="search-box" id="searchBox" style="display:none;">
     <input type="text" id="searchInput" placeholder="記号名・読みで検索 (例: 加速度, とるく)">
   </div>
@@ -697,7 +709,7 @@ function renderIndex(){
     <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin:0 2px 18px;">全 ${total} 記号 / カテゴリ別</div>
     <a href="#quiz" class="tile" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;">
       <span style="font-size:20px;">🎲</span>
-      <span style="font-family:var(--mono);font-size:13px;color:var(--cyan);">記号穴埋めクイズに挑戦する</span>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--cyan);">公式選択クイズに挑戦する</span>
     </a>
     ${blocks}
   `;
@@ -757,50 +769,186 @@ function renderPage(id){
   `;
 }
 
-/* ---------- クイズ機能（公式の記号を全部空欄にして入力する方式） ---------- */
+/* ---------- クイズ機能（似た公式の中から正解を選ぶ4択方式） ---------- */
+/* 表記ルール：×は省略（記号を並べるだけ）／÷は分数表示にする */
 let quizScore = {correct:0, total:0};
 let currentQuiz = null;
 
-// 記号ごとの正答リスト（exact: 大文字小文字を区別して比較 / loose: 読みなどを大文字小文字区別せず許容）
-const ANSWER_MAP = {
-  x:{exact:["x"]}, v:{exact:["v"]}, v0:{exact:["v0","v₀"]}, a:{exact:["a"]}, t:{exact:["t"]},
-  F:{exact:["F"]}, m:{exact:["m"]}, g:{exact:["g"]}, N:{exact:["N"]}, f:{exact:["f"]},
-  mu:{exact:["μ"], loose:["mu"]}, k:{exact:["k"]}, Tt:{exact:["T"]}, R:{exact:["R"]},
-  Fb:{exact:["Fb","F_b"]}, rho:{exact:["ρ"], loose:["rho"]}, V:{exact:["V"]}, W:{exact:["W"]},
-  P:{exact:["P"]}, Ek:{exact:["Ek","E_k"]}, Ep:{exact:["Ep","E_p"]}, Es:{exact:["Es","E_s"]},
-  E:{exact:["E"]}, h:{exact:["h"]}, p:{exact:["p"]}, J:{exact:["J"]}, e:{exact:["e"]},
-  theta:{exact:["θ"], loose:["theta"]}, omega:{exact:["ω"], loose:["omega"]},
-  alpha:{exact:["α"], loose:["alpha"]}, tau:{exact:["τ"], loose:["tau"]}, r:{exact:["r"]},
-  I:{exact:["I"]}, L:{exact:["L"]}, T:{exact:["T"]}, freq:{exact:["f"]}, ac:{exact:["ac","a_c"]},
-  G:{exact:["G"]}, M:{exact:["M"]}, l:{exact:["l"]},
-  heatQ:{exact:["Q"]}, c:{exact:["c"]}, Cheat:{exact:["C"]}, Temp:{exact:["T"]},
-  n_mole:{exact:["n"]}, Rgas:{exact:["R"]}, press:{exact:["p"]}, U:{exact:["U"]},
-  lambda:{exact:["λ"], loose:["lambda"]}, clight:{exact:["c"]}, nref:{exact:["n"]},
-  flens:{exact:["f"]}, aobj:{exact:["a"]}, bimg:{exact:["b"]}, mmag:{exact:["m"]},
-  q:{exact:["q"]}, Vvolt:{exact:["V"]}, Iamp:{exact:["I"]}, Rres:{exact:["R"]},
-  Pelec:{exact:["P"]}, Welec:{exact:["W"]}, Ccap:{exact:["C"]}, Efield:{exact:["E"]},
-  B:{exact:["B"]}, Lwire:{exact:["L"]}, Phi:{exact:["Φ"], loose:["phi"]}, kcoulomb:{exact:["k"]},
-  S:{exact:["S"]}, hplanck:{exact:["h"]}, Ephoton:{exact:["E"]}, W0:{exact:["W0","W_0","W₀"]},
-  Emc2:{exact:["E"]}
-};
+const PH_OPEN = '\u0001', PH_CLOSE = '\u0002';
 
-function checkQuizInput(id, raw){
-  const val = (raw || '').trim();
-  if(!val) return false;
-  const spec = ANSWER_MAP[id];
-  if(!spec) return false;
-  if(spec.exact && spec.exact.includes(val)) return true;
-  if(spec.loose && spec.loose.some(w => w.toLowerCase() === val.toLowerCase())) return true;
-  return false;
+// 公式のhtmlを解析して {lhs, hasFrac, num/den (or flat), chips} という構造に変換する。
+// sin・√を含む式や、＝が複数/0個の式、左辺が単一記号でない式（レンズの式など）は
+// 自動での変形・改題が難しいため null を返して対象から除外する。
+function parseFormula(html){
+  let s = html.replace(/<span class="op">/g,'').replace(/<\/span>/g,'');
+  if(/sin|√/.test(s)) return null;
+
+  const chips = [];
+  s = s.replace(/<a href="#(\w+)" class="chip(?: self)?">(.*?)<\/a>/g, (m, id, disp) => {
+    chips.push({id, disp});
+    return PH_OPEN + (chips.length-1) + PH_CLOSE;
+  });
+
+  const eqCount = (s.match(/=/g)||[]).length;
+  if(eqCount !== 1) return null;
+  const eqIdx = s.indexOf('=');
+  const lhs = s.slice(0, eqIdx).trim();
+  let rhs = s.slice(eqIdx+1).trim();
+  const lhsPh = (lhs.match(new RegExp(PH_OPEN,'g'))||[]).length;
+  if(lhsPh !== 1) return null;
+
+  // 最上位（かっこの外）の÷を探す
+  let divIdx = -1, depth = 0;
+  for(let i=0;i<rhs.length;i++){
+    const ch = rhs[i];
+    if(ch==='(') depth++;
+    else if(ch===')') depth--;
+    else if(ch==='÷' && depth===0){ divIdx = i; break; }
+  }
+  if(divIdx !== -1){
+    let depth2=0;
+    for(let i=divIdx+1;i<rhs.length;i++){
+      const ch = rhs[i];
+      if(ch==='(') depth2++;
+      else if(ch===')') depth2--;
+      else if(ch==='÷' && depth2===0) return null; // 複数の÷は複雑すぎるので除外
+    }
+  }
+
+  if(divIdx === -1){
+    if(/÷/.test(rhs)) return null;
+    return {lhs, hasFrac:false, flat:rhs.replace(/×/g,'').trim(), chips};
+  }
+
+  let numRaw = rhs.slice(0, divIdx).replace(/×/g,'').trim();
+  let after = rhs.slice(divIdx+1).trimStart();
+  let denRaw, rest = '';
+  if(after[0] === '('){
+    let d=1, j=1;
+    while(j<after.length && d>0){ if(after[j]==='(') d++; else if(after[j]===')') d--; j++; }
+    denRaw = after.slice(1, j-1);
+    rest = after.slice(j);
+  } else {
+    denRaw = after;
+  }
+  denRaw = denRaw.replace(/×/g,'').trim();
+  rest = rest.replace(/×/g,'').trim();
+  return {lhs, hasFrac:true, num:numRaw, den:denRaw, rest, chips};
+}
+
+function tokensToHtml(str, chips){
+  return str.replace(new RegExp(PH_OPEN+'(\\d+)'+PH_CLOSE,'g'), (m, idx) => `<span class="chip">${chips[idx].disp}</span>`);
+}
+
+function renderFormula(p){
+  const lhsHtml = tokensToHtml(p.lhs, p.chips);
+  if(!p.hasFrac){
+    return `${lhsHtml}<span class="eq">=</span>${tokensToHtml(p.flat, p.chips)}`;
+  }
+  const num = tokensToHtml(p.num, p.chips);
+  const den = tokensToHtml(p.den, p.chips);
+  const rest = p.rest ? tokensToHtml(p.rest, p.chips) : '';
+  return `${lhsHtml}<span class="eq">=</span><span class="frac"><span class="frac-num">${num}</span><span class="frac-bar"></span><span class="frac-den">${den}</span></span>${rest}`;
+}
+
+function clone(p){ return JSON.parse(JSON.stringify(p)); }
+
+/* ---- 「似た公式」を作るための変形（本物の公式を少しだけ壊して誤答にする） ---- */
+function mutSwapFrac(p){
+  if(!p.hasFrac || p.num === p.den) return null;
+  const q = clone(p);
+  [q.num, q.den] = [q.den, q.num];
+  return q;
+}
+function swapExpo(str){
+  if(str.includes('²')) return str.replace('²','');
+  if(str.includes('³')) return str.replace('³','²');
+  const m = str.match(new RegExp(PH_OPEN+'\\d+'+PH_CLOSE));
+  if(m) return str.slice(0, m.index+m[0].length) + '²' + str.slice(m.index+m[0].length);
+  return null;
+}
+function mutExponent(p){
+  const q = clone(p);
+  if(q.hasFrac){
+    let c = swapExpo(q.num); if(c!==null){ q.num=c; return q; }
+    c = swapExpo(q.den); if(c!==null){ q.den=c; return q; }
+    return null;
+  }
+  const c = swapExpo(q.flat);
+  if(c!==null){ q.flat=c; return q; }
+  return null;
+}
+const COEF_SWAPS = [['½','2'],['4π²','2π²'],['2π','π'],['π','2π']];
+function swapCoef(str){
+  for(const [a,b] of COEF_SWAPS){ if(str.includes(a)) return str.replace(a,b); }
+  return null;
+}
+function mutCoefficient(p){
+  const q = clone(p);
+  if(q.hasFrac){
+    let c = swapCoef(q.num); if(c){ q.num=c; return q; }
+    c = swapCoef(q.den); if(c){ q.den=c; return q; }
+    return null;
+  }
+  const c = swapCoef(q.flat);
+  if(c){ q.flat=c; return q; }
+  return null;
+}
+function mutSign(p){
+  if(p.hasFrac) return null;
+  const q = clone(p);
+  if(q.flat.includes('+')){ q.flat = q.flat.replace('+','−'); return q; }
+  if(q.flat.includes('−')){ q.flat = q.flat.replace('−','+'); return q; }
+  return null;
+}
+function mutMultToDiv(p){
+  if(p.hasFrac || /[+−]/.test(p.flat)) return null;
+  const re = new RegExp(PH_OPEN+'\\d+'+PH_CLOSE,'g');
+  const ms = [...p.flat.matchAll(re)];
+  if(ms.length !== 2) return null;
+  const before = p.flat.slice(0, ms[0].index);
+  const between = p.flat.slice(ms[0].index+ms[0][0].length, ms[1].index);
+  const after = p.flat.slice(ms[1].index+ms[1][0].length);
+  return {lhs:p.lhs, hasFrac:true, num: before+ms[0][0]+between, den: ms[1][0]+after, rest:'', chips:p.chips};
+}
+
+function genChoices(parsed, foreignHtmls){
+  const correctHtml = renderFormula(parsed);
+  const seen = new Set([correctHtml]);
+  const wrongHtmls = [];
+  [mutSwapFrac, mutExponent, mutCoefficient, mutSign, mutMultToDiv].forEach(fn => {
+    if(wrongHtmls.length >= 3) return;
+    const variant = fn(parsed);
+    if(!variant) return;
+    const html = renderFormula(variant);
+    if(seen.has(html)) return;
+    seen.add(html);
+    wrongHtmls.push(html);
+  });
+  const shuffledForeign = [...foreignHtmls].sort(() => Math.random()-0.5);
+  while(wrongHtmls.length < 3 && shuffledForeign.length){
+    const html = shuffledForeign.pop();
+    if(seen.has(html)) continue;
+    seen.add(html);
+    wrongHtmls.push(html);
+  }
+  const choices = [{html:correctHtml, correct:true}, ...wrongHtmls.map(html => ({html, correct:false}))];
+  for(let i = choices.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [choices[i], choices[j]] = [choices[j], choices[i]];
+  }
+  return choices;
 }
 
 function buildQuizPool(){
   const pool = [];
   Object.values(DATA).forEach(entry=>{
     entry.formulas.forEach(fm=>{
-      const matches = [...fm.html.matchAll(/<a href="#(\w+)" class="(chip[^"]*)">(.*?)<\/a>/g)];
-      const nonSelf = matches.filter(m => !m[2].includes('self'));
-      if(nonSelf.length >= 1){ pool.push({entry, fm, nonSelf}); }
+      const chipCount = (fm.html.match(/<a href="#\w+" class="chip/g)||[]).length;
+      if(chipCount < 2) return;
+      const parsed = parseFormula(fm.html);
+      if(!parsed) return;
+      pool.push({entry, fm, parsed});
     });
   });
   return pool;
@@ -808,86 +956,63 @@ function buildQuizPool(){
 
 function nextQuizQuestion(){
   const pool = buildQuizPool();
-  const picked = pool[Math.floor(Math.random()*pool.length)];
+  const idx = Math.floor(Math.random()*pool.length);
+  const picked = pool[idx];
+  const foreignHtmls = pool.filter((_,i) => i!==idx).map(p => renderFormula(p.parsed));
+  const choices = genChoices(picked.parsed, foreignHtmls);
 
-  let html = picked.fm.html;
-  const blanks = picked.nonSelf.map(m => ({id:m[1], disp:m[3]}));
-  // 後ろから置換してインデックスのズレを防ぐ（自分自身の記号はそのまま残す）
-  for(let i = picked.nonSelf.length - 1; i >= 0; i--){
-    const m = picked.nonSelf[i];
-    const start = m.index, end = start + m[0].length;
-    const inputTag = `<input type="text" class="quiz-input" data-blank="${i}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`;
-    html = html.slice(0,start) + inputTag + html.slice(end);
-  }
-
-  currentQuiz = { entry: picked.entry, note: picked.fm.note, blankedHtml: html, blanks, submitted:false };
+  currentQuiz = { entry: picked.entry, note: picked.fm.note, choices, answered:false };
   renderQuizQuestion();
 }
 
 function renderQuizQuestion(){
   const q = currentQuiz;
+  const e = q.entry;
   main.innerHTML = `
     <div class="quiz-score">
       正解数 <span class="num">${quizScore.correct}</span> / <span class="num">${quizScore.total}</span>
     </div>
-    <p class="quiz-prompt">この公式の空欄すべてに記号を入力してね（ギリシャ文字は theta, omega, mu, rho, lambda, phi, alpha, tau のようにローマ字入力でもOK）</p>
-    <div class="quiz-formula-card">
-      <div class="quiz-formula">${q.blankedHtml}</div>
-      <div class="quiz-note">${q.note}</div>
+    <p class="quiz-prompt">次の記号を求める正しい公式はどれ？似た形の公式にまぎらわされないように。</p>
+    <div class="quiz-target">
+      <div class="quiz-target-sym">${e.disp}</div>
+      <div class="quiz-target-name">${e.name}<span class="quiz-target-unit">単位: ${e.unit}</span></div>
     </div>
-    <div class="quiz-actions" id="quizActions">
-      <button class="quiz-submit" id="quizSubmitBtn">採点する</button>
+    <div class="quiz-choices" id="quizChoices">
+      ${q.choices.map((c,i) => `<button class="quiz-grade" data-idx="${i}"><span class="quiz-choice-formula">${c.html}</span></button>`).join('')}
     </div>
+    <div class="quiz-actions" id="quizActions"></div>
   `;
 
-  const inputs = [...main.querySelectorAll('.quiz-input')];
-  inputs.forEach((el, idx) => {
-    el.addEventListener('keydown', (ev) => {
-      if(ev.key === 'Enter'){
-        ev.preventDefault();
-        if(!currentQuiz.submitted && idx < inputs.length - 1){ inputs[idx+1].focus(); }
-        else { submitQuiz(); }
-      }
-    });
+  main.querySelectorAll('.quiz-choices .quiz-grade').forEach(btn => {
+    btn.addEventListener('click', () => pickAnswer(Number(btn.dataset.idx)));
   });
-  if(inputs.length) inputs[0].focus();
-
-  document.getElementById('quizSubmitBtn').addEventListener('click', submitQuiz);
 }
 
-function submitQuiz(){
+function pickAnswer(idx){
   const q = currentQuiz;
-  if(q.submitted) return;
-  q.submitted = true;
+  if(q.answered) return;
+  q.answered = true;
 
-  const inputs = [...main.querySelectorAll('.quiz-input')];
-  let correctCount = 0;
-  inputs.forEach(el => {
-    const idx = Number(el.dataset.blank);
-    const blank = q.blanks[idx];
-    const ok = checkQuizInput(blank.id, el.value);
-    el.disabled = true;
-    if(ok){
-      el.classList.add('q-correct');
-      correctCount++;
-    } else {
-      el.classList.add('q-wrong');
-      el.value = '';
-      const reveal = document.createElement('span');
-      reveal.className = 'quiz-reveal';
-      reveal.innerHTML = `→ ${blank.disp}`;
-      el.insertAdjacentElement('afterend', reveal);
+  const buttons = [...main.querySelectorAll('.quiz-choices .quiz-grade')];
+  buttons.forEach((btn,i) => {
+    btn.disabled = true;
+    if(q.choices[i].correct){
+      btn.classList.add('quiz-grade-ok');
+      if(i===idx) btn.classList.add('picked');
+    } else if(i===idx){
+      btn.classList.add('quiz-grade-ng','picked');
     }
   });
 
-  quizScore.total += q.blanks.length;
-  quizScore.correct += correctCount;
+  const correct = q.choices[idx].correct;
+  quizScore.total += 1;
+  if(correct) quizScore.correct += 1;
   document.querySelectorAll('.quiz-score .num')[0].textContent = quizScore.correct;
   document.querySelectorAll('.quiz-score .num')[1].textContent = quizScore.total;
 
   document.getElementById('quizActions').innerHTML = `
-    <div class="quiz-result-line">この問題: <span class="num">${correctCount}</span> / <span class="num">${q.blanks.length}</span> 正解</div>
-    <div class="quiz-source-link">出題元: <a href="#${q.entry.id}">${q.entry.disp} — ${q.entry.name}</a></div>
+    <div class="quiz-result-line">${correct ? '正解！' : '不正解…正しい公式が緑でハイライトされています'}</div>
+    <div class="quiz-source-link">出題元: <a href="#${q.entry.id}">${q.entry.disp} — ${q.entry.name}</a>　${q.note}</div>
     <button class="quiz-next" id="quizNextBtn">次の問題 →</button>
   `;
   document.getElementById('quizNextBtn').addEventListener('click', nextQuizQuestion);
